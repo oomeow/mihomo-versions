@@ -1,0 +1,16 @@
+{
+  "keep_extensions": [],
+  "exclude_names": [],
+  "platforms": [
+    { "name": "darwin-x86_64", "patterns": ["x86_64-apple-darwin", "darwin-amd64", "darwin-x86_64", "darwin-x64"] },
+    { "name": "darwin-aarch64", "patterns": ["aarch64-apple-darwin", "darwin-arm64", "darwin-aarch64"] },
+    { "name": "windows-x86_64", "patterns": ["x86_64-pc-windows", "windows-amd64", "windows-x86_64", "windows-x64"] },
+    { "name": "windows-aarch64", "patterns": ["aarch64-pc-windows", "windows-arm64", "windows-aarch64"] },
+    { "name": "windows-x86", "patterns": ["i686-pc-windows", "windows-386", "windows-i386", "windows-i686", "windows-x86"] },
+    { "name": "windows-arm", "patterns": ["armv7-pc-windows", "windows-armv7", "windows-armhf", "windows-arm"] },
+    { "name": "linux-x86_64", "patterns": ["x86_64-unknown-linux", "linux-amd64", "linux-x86_64", "linux-x64"] },
+    { "name": "linux-aarch64", "patterns": ["aarch64-unknown-linux", "linux-arm64", "linux-aarch64"] },
+    { "name": "linux-x86", "patterns": ["i686-unknown-linux", "linux-386", "linux-i386", "linux-i686", "linux-x86"] },
+    { "name": "linux-arm", "patterns": ["armv7-unknown-linux", "linux-armv7", "linux-armhf", "linux-arm"] }
+  ]
+}

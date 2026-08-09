@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "source": {
+    "owner": "MetaCubeX",
+    "repo": "mihomo"
+  },
+  "generated_at": "2026-08-01T00:00:00Z",
+  "versions": [
+    {
+      "semver": "1.19.9",
+      "tag": "v1.19.9",
+      "prerelease": false,
+      "published_at": "2026-07-30T00:00:00Z",
+      "assets": [
+        {
+          "name": "mihomo-linux-amd64-v1.19.9.gz",
+          "platform": "linux-amd64",
+          "format": "gz",
+          "size": 100,
+          "sha256": null,
+          "url": "https://example.com/mihomo-linux-amd64-v1.19.9.gz"
+        }
+      ],
+      "channel": "stable"
+    },
+    {
+      "tag": "Prerelease-Alpha",
+      "prerelease": true,
+      "published_at": "2026-08-01T00:00:00Z",
+      "assets": [
+        {
+          "name": "mihomo-linux-amd64-alpha.gz",
+          "platform": "linux-amd64",
+          "format": "gz",
+          "size": 120,
+          "url": "https://example.com/mihomo-linux-amd64-alpha.gz"
+        }
+      ],
+      "channel": "alpha"
+    }
+  ]
+}
