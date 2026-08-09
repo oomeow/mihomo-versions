@@ -1,0 +1,52 @@
+[package]
+name = "mihomo-versions"
+version = "0.1.0"
+edition = "2024"
+description = "mihomo release binary management library and sync tool"
+license = "MIT"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "fs", "io-util", "time", "macros"] }
+reqwest = { version = "0.13", default-features = false, features = [
+  "json",
+  "rustls",
+  "rustls-native-certs",
+  "stream",
+  "socks",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1"
+sha2 = "0.10"
+flate2 = "1"
+zstd = "0.13"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+tar = "0.4"
+thiserror = "2"
+hex = "0.4"
+bytes = "1"
+tokio-util = "0.7"
+time = { version = "0.3", features = ["formatting", "parsing"] }
+clap = { version = "4", features = ["derive"] }
+log = "0.4"
+env_logger = "0.11"
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+
+[lib]
+name = "mihomo_versions"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mihomo-versions-sync"
+path = "src/bin/sync.rs"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1

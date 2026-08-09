@@ -1,0 +1,81 @@
+name: sync-index
+
+on:
+  schedule:
+    - cron: "0 */1 * * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download prebuilt sync binary
+        # Pulls the binary published by the cli-alpha-build workflow. A failed
+        # download aborts the job here (no local-build fallback).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release download cli-alpha \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'mihomo-versions-sync' \
+            --clobber
+          chmod +x ./mihomo-versions-sync
+
+      - name: Sync all repositories
+        # The token is passed via environment variable only, so it never
+        # appears on the command line or in the workflow logs. --emit-gz
+        # writes both plain JSON (committed below) and a gzip copy (uploaded
+        # to the index release as the download artifacts). Sync is always
+        # incremental: unchanged releases/assets are reused, changed/new ones
+        # reprocessed, deleted ones dropped.
+        env:
+          MIHOMO_VERSION_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./mihomo-versions-sync --config sync-config/sync-all.json --compact --emit-gz
+
+      - name: Commit updated indexes
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Commit only the plain JSON indexes; the .gz copies live in the
+          # index release, not in git.
+          git add 'index/*.json'
+          if git diff --cached --quiet; then
+            echo "indexes unchanged"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: sync release indexes"
+            # Rebase onto the latest remote before pushing: the bot's checkout
+            # can lag behind concurrent pushes (e.g. docs/CI commits), which
+            # would otherwise make the push non-fast-forward and get rejected.
+            # Only index/ changes are made here, so a rebase always applies cleanly.
+            git fetch origin main
+            git rebase origin/main
+            git push origin main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish index release
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="index"
+          # Single versioned release: create once, then clobber every index asset so
+          # releases/latest/download/<name>.json.gz always has the newest indexes.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "release indexes" \
+              --notes "Latest release indexes (gzip). Download: releases/latest/download/<name>-releases.json.gz"
+          fi
+          gh release upload "$TAG" index/*.json.gz --repo "$GITHUB_REPOSITORY" --clobber

@@ -1,0 +1,38 @@
+name: cli-alpha-build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sync binary
+        run: cargo build --release --bin mihomo-versions-sync
+
+      - name: Publish cli-alpha prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Create the cli-alpha prerelease once, then clobber the binary asset on
+          # every build so releases/latest/download/mihomo-versions-sync always
+          # carries the newest sync binary.
+          if ! gh release view cli-alpha --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create cli-alpha \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "cli-alpha build" \
+              --notes "Prebuilt mihomo-versions-sync CLI for CI (ubuntu). Download: releases/latest/download/mihomo-versions-sync" \
+              --prerelease
+          fi
+          gh release upload cli-alpha ./target/release/mihomo-versions-sync \
+            --repo "$GITHUB_REPOSITORY" --clobber

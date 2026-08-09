@@ -1,0 +1,16 @@
+{
+  "keep_extensions": ["gz", "zip", "zst"],
+  "exclude_names": [],
+  "platforms": [
+    { "name": "darwin-x86_64", "patterns": ["darwin-amd64", "darwin-x86_64", "darwin-x64", "darwin-x86-64"] },
+    { "name": "darwin-aarch64", "patterns": ["darwin-arm64", "darwin-aarch64"] },
+    { "name": "windows-x86_64", "patterns": ["windows-amd64", "windows-x86_64", "windows-x64", "windows-x86-64"] },
+    { "name": "windows-aarch64", "patterns": ["windows-arm64", "windows-aarch64"] },
+    { "name": "windows-x86", "patterns": ["windows-386", "windows-i386", "windows-i686", "windows-x86"] },
+    { "name": "windows-arm", "patterns": ["windows-armv7", "windows-armhf", "windows-arm"] },
+    { "name": "linux-x86_64", "patterns": ["linux-amd64", "linux-x86_64", "linux-x64", "linux-x86-64"] },
+    { "name": "linux-aarch64", "patterns": ["linux-arm64", "linux-aarch64"] },
+    { "name": "linux-x86", "patterns": ["linux-386", "linux-i386", "linux-i686", "linux-x86"] },
+    { "name": "linux-arm", "patterns": ["linux-armv7", "linux-armhf", "linux-arm"] }
+  ]
+}

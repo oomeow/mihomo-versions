@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    { "repo": "MetaCubeX/mihomo", "out": "index/mihomo-releases.json" },
+    { "repo": "vernesong/mihomo", "out": "index/mihomo-smart-releases.json" },
+    { "repo": "madeye/meow-rs", "out": "index/meow-rs-releases.json", "classifier": "classifier/meow-rs.json" },
+    { "repo": "Watfaq/clash-rs", "out": "index/clash-rs-releases.json", "classifier": "classifier/clash-rs.json" }
+  ]
+}

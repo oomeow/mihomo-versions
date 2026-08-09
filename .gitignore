@@ -1,0 +1,20 @@
+/target
+.env
+.DS_Store
+
+*.json.gz
+/*.json
+!github-release.json
+!mihomo-releases.json
+
+/*.meta
+
+# AI
+.agents/
+.claude/
+.codex/
+.gitnexus/
+.opencode/
+.trellis/
+AGENTS.md
+CLAUDE.md
