@@ -156,48 +156,6 @@ impl DownloadHandle {
     }
 }
 
-/// 资产名去掉压缩扩展名，得到下载缓存文件的基名
-/// （同一版本不同编译变体由此区分）。
-pub fn asset_base_name(asset: &MihomoAsset) -> &str {
-    base_name(&asset.name)
-}
-
-/// 名字去掉压缩扩展名（.tar.gz / .gz / .zip / .zst）。
-pub fn base_name(name: &str) -> &str {
-    for ext in [".tar.gz", ".gz", ".zip", ".zst"] {
-        if let Some(base) = name.strip_suffix(ext) {
-            return base;
-        }
-    }
-    name
-}
-
-/// 列出目录中已下载（缓存）的变体基名，跳过 `.part` 相关文件。
-pub fn list_cached_downloads(dir: &Path) -> Vec<String> {
-    let mut names = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if name.ends_with(".part") || name.ends_with(".part.meta") {
-                continue;
-            }
-            names.push(name);
-        }
-    }
-    names
-}
-
-/// 删除目录中缓存的编译变体（按资产名或基名，含可能的 `.part` 断点文件）。
-pub fn remove_cached_download(dir: &Path, asset_name: &str) -> Result<(), Error> {
-    let base = base_name(asset_name);
-    for p in [dir.join(base), dir.join(format!("{base}.part")), dir.join(format!("{base}.part.meta"))] {
-        if p.exists() {
-            std::fs::remove_file(&p)?;
-        }
-    }
-    Ok(())
-}
-
 /// 单次下载尝试（含重试逻辑由 [`download`] 负责）。
 ///
 /// `progress` 回调参数为 `(downloaded_bytes, total_bytes)`：已下载字节数 / 总字节数（`0` 表示未知）。
@@ -614,37 +572,5 @@ mod tests {
     fn part_path_is_deterministic() {
         let dest = Path::new("/tmp/out/mihomo");
         assert_eq!(temp_part_path(dest), Path::new("/tmp/out/mihomo.part"));
-    }
-
-    #[test]
-    fn base_name_strips_known_extensions() {
-        assert_eq!(base_name("mihomo-darwin-amd64-v1.19.29.gz"), "mihomo-darwin-amd64-v1.19.29");
-        assert_eq!(base_name("mihomo-windows-amd64-v1.19.29.zip"), "mihomo-windows-amd64-v1.19.29");
-        assert_eq!(base_name("mihomo-linux-amd64-v1.19.29.tar.gz"), "mihomo-linux-amd64-v1.19.29");
-        assert_eq!(base_name("mihomo-linux-amd64-v1.19.29.zst"), "mihomo-linux-amd64-v1.19.29");
-        assert_eq!(base_name("mihomo-darwin-amd64"), "mihomo-darwin-amd64");
-    }
-
-    #[test]
-    fn list_cached_downloads_skips_part_files() {
-        let dir = std::env::temp_dir().join(format!("mihomo-versions-list-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("mihomo-a-v1"), "x").unwrap();
-        std::fs::write(dir.join("mihomo-a-v1.part"), "x").unwrap();
-        std::fs::write(dir.join("mihomo-a-v1.part.meta"), "x").unwrap();
-        assert_eq!(list_cached_downloads(&dir), vec!["mihomo-a-v1"]);
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn remove_cached_download_removes_base_and_part() {
-        let dir = std::env::temp_dir().join(format!("mihomo-versions-remove-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("mihomo-a-v1"), "x").unwrap();
-        std::fs::write(dir.join("mihomo-a-v1.part"), "x").unwrap();
-        remove_cached_download(&dir, "mihomo-a-v1.gz").unwrap();
-        assert!(!dir.join("mihomo-a-v1").exists());
-        assert!(!dir.join("mihomo-a-v1.part").exists());
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
