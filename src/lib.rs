@@ -21,10 +21,7 @@ mod model;
 mod platform;
 
 pub use client::HttpClient;
-pub use downloader::{
-    DownloadHandle, DownloadOptions, asset_base_name, base_name, download, download_async, list_cached_downloads,
-    remove_cached_download,
-};
+pub use downloader::{DownloadHandle, DownloadOptions, download, download_async};
 pub use error::Error;
 pub use index::{
     Channel, IndexCache, VersionFilter, assets_for_platform, fetch_index, fetch_index_cached, list_versions,
