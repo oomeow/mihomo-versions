@@ -7,6 +7,10 @@
 !github-release.json
 !mihomo-releases.json
 
+# Release-index scratch dir produced by the sync workflow; indexes are
+# published as GitHub Release assets, never committed.
+/index/
+
 /*.meta
 
 # AI

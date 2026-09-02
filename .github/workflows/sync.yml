@@ -6,6 +6,11 @@ on:
       timezone: "Asia/Shanghai"
   workflow_dispatch:
 
+# Serialize hourly runs so two runs never race on the clobbered index release.
+concurrency:
+  group: sync-index
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -14,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The index release, not git, carries the previous indexes, so the
+          # full history is not needed.
+          fetch-depth: 1
 
       - name: Download prebuilt sync binary
         # Pulls the binary published by the cli-alpha-build workflow. A failed
@@ -28,54 +37,73 @@ jobs:
             --clobber
           chmod +x ./mihomo-versions-sync
 
+      - name: Fetch previous plain indexes
+        # The sync binary is incremental: it reuses entries from the existing
+        # plain-JSON index sitting at the output path and keeps `generated_at`
+        # stable so unchanged runs stay byte-identical. Git no longer provides
+        # that base (indexes are never committed), so download the last
+        # published plain indexes from the `index` release into the output
+        # directory first. `--pattern '*.json'` matches only the plain assets,
+        # never the `.json.gz` copies. A missing release or asset is fine:
+        # the sync then processes everything fresh and this run publishes.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p index prev
+          if ! gh release download index \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.json' \
+            --dir index \
+            --clobber; then
+            echo "no previous plain indexes published yet; syncing full"
+          fi
+          # Snapshot the previous copies before the sync overwrites them in
+          # place; the publish step diffs against this snapshot.
+          cp -f index/*.json prev/ 2>/dev/null || true
+
       - name: Sync all repositories
         # The token is passed via environment variable only, so it never
         # appears on the command line or in the workflow logs. --emit-gz
-        # writes both plain JSON (committed below) and a gzip copy (uploaded
-        # to the index release as the download artifacts). Sync is always
-        # incremental: unchanged releases/assets are reused, changed/new ones
-        # reprocessed, deleted ones dropped.
+        # writes both plain JSON and a gzip copy; the plain JSON is the
+        # incremental base + change-detection baseline, the gzip copy is the
+        # download artifact. Nothing here touches git.
         env:
           MIHOMO_VERSION_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mihomo-versions-sync --config sync-config/sync-all.json --compact --emit-gz
 
-      - name: Commit updated indexes
-        id: commit
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Commit only the plain JSON indexes; the .gz copies live in the
-          # index release, not in git.
-          git add 'index/*.json'
-          if git diff --cached --quiet; then
-            echo "indexes unchanged"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            git commit -m "chore: sync release indexes"
-            # Rebase onto the latest remote before pushing: the bot's checkout
-            # can lag behind concurrent pushes (e.g. docs/CI commits), which
-            # would otherwise make the push non-fast-forward and get rejected.
-            # Only index/ changes are made here, so a rebase always applies cleanly.
-            git fetch origin main
-            git rebase origin/main
-            git push origin main
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Publish index release
-        if: steps.commit.outputs.changed == 'true'
+      - name: Publish changed indexes
+        # Uploads plain JSON + gzip pairs for every index that changed since
+        # the last publish; unchanged indexes are skipped so the release is
+        # not churned. Indexes live only as assets of the single "index"
+        # release (clobbered "latest"), never in git, so main does not move
+        # when release data changes.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="index"
-          # Single versioned release: create once, then clobber every index asset so
-          # releases/latest/download/<name>.json.gz always has the newest indexes.
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --title "release indexes" \
               --notes "Latest release indexes (gzip). Download: releases/latest/download/<name>-releases.json.gz"
           fi
-          gh release upload "$TAG" index/*.json.gz --repo "$GITHUB_REPOSITORY" --clobber
+          changed=false
+          for f in index/*.json; do
+            [ -f "$f" ] || continue
+            name="$(basename "$f")"
+            if [ ! -f "prev/$name" ] || ! cmp -s "$f" "prev/$name"; then
+              echo "publishing changed index: $name"
+              gh release upload "$TAG" "$f" "${f%.json}.json.gz" \
+                --repo "$GITHUB_REPOSITORY" --clobber
+              changed=true
+            else
+              echo "unchanged, skipping: $name"
+            fi
+          done
+          if [ "$changed" = true ]; then
+            echo "published updated indexes"
+          else
+            echo "indexes unchanged"
+          fi
