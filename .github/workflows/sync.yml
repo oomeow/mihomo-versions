@@ -26,16 +26,27 @@ jobs:
 
       - name: Download prebuilt sync binary
         # Pulls the binary published by the cli-alpha-build workflow. A failed
-        # download aborts the job here (no local-build fallback).
+        # download aborts the job here (no local-build fallback). The cli-alpha
+        # asset is clobber-replaced whenever a push rebuilds it, which can
+        # briefly leave no asset to download (delete+upload window), so retry
+        # before giving up.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release download cli-alpha \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'mihomo-versions-sync' \
-            --clobber
-          chmod +x ./mihomo-versions-sync
+          for attempt in 1 2 3 4 5; do
+            if gh release download cli-alpha \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern 'mihomo-versions-sync' \
+              --clobber; then
+              chmod +x ./mihomo-versions-sync
+              exit 0
+            fi
+            echo "binary download failed (attempt $attempt/5); retrying in 15s"
+            sleep 15
+          done
+          echo "could not download mihomo-versions-sync after 5 attempts" >&2
+          exit 1
 
       - name: Fetch previous plain indexes
         # The sync binary is incremental: it reuses entries from the existing
